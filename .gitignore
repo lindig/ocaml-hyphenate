@@ -1,7 +1,8 @@
-*.wsp
+*.swp
 *.un~
 _build
 *.native
 *.byte
 *.d.byte
+
 
