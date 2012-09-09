@@ -19,7 +19,8 @@ To compile the software from source code you need:
   literate program. Lipsum is implemented in Objective Caml as well and you
   could add it as as Git submodule.
 
-To build the software it should suffice to run Make:
+To build the software it should suffice to run Make. Please take a look at
+the `Makefile`. It supports downloading and building Lipsum.
 
     $ make
 
@@ -99,6 +100,7 @@ word into disjoint substrings:
     val add:  t -> string -> unit   (* add a pattern to a language *)
     
     val load: path -> t             (* may raise Error *)
+    val dump: t -> unit             (* for debugging *)
     
     val hyphenate: t -> string -> string list
     
@@ -445,7 +447,7 @@ as it is not explained in _The TeXbook_)
                 else loop (n+1) (String.sub word (i-1) (n-i+1) :: acc)
         in
             List.rev (loop 2 [])
-            
+    
     
 To hyphenate a word, we put a dot `.` at the beginning and end and use 
 a sliding window to find all matching patterns in the pattern dictionary.
@@ -467,6 +469,32 @@ word, whatever is shorter.
                 slide i word lookup' 
             done;
             split word breaks
+    
+    
+For debugging, we join a word and its break points into a string again
+that can be easily printed.
+
+    <<hyphenate.ml>>=
+    let join (word:string) (breaks:int array): string =
+        assert (Array.length breaks = String.length word + 1);
+        let i2c i = Char.chr (i + Char.code '0') in
+        let str = String.make (Array.length breaks + String.length word) ' ' in
+        for i = 0 to String.length word - 1 do
+            ( str.[i*2]   <- i2c breaks.(i)
+            ; str.[i*2+1] <- word.[i]
+            )
+        done; 
+        str.[String.length word * 2] <- i2c breaks.(String.length word);
+        str
+           
+    
+    
+    <<hyphenate.ml>>=
+    let dump t =
+        let print key value =
+            Printf.printf "%s %s\n" key (join key value)
+        in    
+            Hashtbl.iter print t.patterns
     
 
 ## Demo Client
@@ -497,15 +525,14 @@ but it can be convenient to have access to it.)
             | Failed exn -> raise exn
     
     
-`print` hyphenates a word, joins the parts together using a hyphen and 
-emits it.
-
+    
     <<demo.ml>>=
     let usage this =
         List.iter prerr_endline
         [ this ^ " -f file.txt          hypenate words in file.txt"
         ; this ^ " word ..              hyphenate arguments"
         ; this ^ " -h                   emit help"
+        ; this ^ "-d                    emit hyphenation patterns" 
         ; ""
         ; this ^ " reads words from a file or the the command line and"
         ; "emits them hyphenated to stdout. Before hyphenation, words are"
@@ -515,7 +542,12 @@ emits it.
         ; "https://github.com/lindig/ocaml-hyphenate"
         ]
     
-    let print lang word = 
+    
+`process` hyphenates a word, joins the parts together using a hyphen and 
+emits it.
+
+    <<demo.ml>>=
+    let process lang word = 
         print_endline @@ String.concat "-" @@ Hyphenate.hyphenate lang word
     
     let words' io       = Hyphenate_reader.words @@ Lexing.from_channel io
@@ -527,9 +559,10 @@ emits it.
         let args        = List.tl argv in    
         let language    = Hyphenate_us.t in
             match args with
-            | ["-f"; path]  -> List.iter (print language) (words_in path)
+            | ["-f"; path]  -> List.iter (process language) (words_in path)
             | "-h" :: _     -> usage this
-            | word :: _     -> List.iter (print language) 
+            | ["-d"]        -> Hyphenate.dump Hyphenate_us.t
+            | word :: _     -> List.iter (process language) 
                                 (List.map String.lowercase args)         
             | _             -> usage this
     
