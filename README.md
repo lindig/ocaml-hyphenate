@@ -120,10 +120,10 @@ digit greater zero indicates (roughly) a good hyphenation point.  In the
 above format, digit `0` may be omitted for brevity. Hence, the patterns
 above could be expanded to:
 
-    .0b0a5n0a0
-    .0b0a0s4e0
-    .0b0e0r40
-    .0b0e5r0a0
+    0.0b0a5n0a0
+    0.0b0a0s4e0
+    0.0b0e0r40
+    0.0b0e5r0a0
 
 A dot at the beginning or end of a pattern designates the beginning or end
 of a word. Before a word to be hyphenated is matched against a pattern, it
@@ -258,10 +258,8 @@ pattern.
     exception Error of string
     let error msg = raise (Error msg)
     
-    
     let debug fmt   = Printf.kprintf (fun msg -> prerr_string msg) fmt
     let debug fmt   = Printf.kprintf (fun msg -> ()) fmt
-    
     
     
 Some small utilities.
@@ -541,14 +539,17 @@ but it can be convenient to have access to it.)
     <<demo.ml>>=
     let usage this =
         List.iter prerr_endline
-        [ this ^ " -f file.txt          hypenate words in file.txt"
+        [ this ^ " usage:"
+        ; ""
+        ; this ^ " -f file.txt          hypenate words in file.txt"
         ; this ^ " word ..              hyphenate arguments"
         ; this ^ " -h                   emit help"
-        ; this ^ "-d                    emit hyphenation patterns" 
+        ; this ^ " -d                   emit hyphenation patterns" 
         ; ""
-        ; this ^ " reads words from a file or the the command line and"
+        ; this^" reads words from a file or the the command line and"
         ; "emits them hyphenated to stdout. Before hyphenation, words are"
-        ; "turned to lower case."
+        ; "turned to lower case. "^this^" uses built-in patterns for"
+        ; "US English."  
         ; ""
         ; "(c) 2012 Christian Lindig <lindig@gmail.com>"
         ; "https://github.com/lindig/ocaml-hyphenate"
