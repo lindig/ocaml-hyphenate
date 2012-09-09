@@ -90,6 +90,8 @@ A language value is a mutable abstraction.  `hyphenate` splits a given
 word into disjoint substrings:
 
 <<hyphenate.mli>>=
+exception Error of string
+
 type t                          (* mutable *)   
 type path = string              (* file path *)
 
@@ -486,9 +488,11 @@ let usage this =
     ; this ^ " -h                   emit help"
     ; ""
     ; this ^ " reads words from a file or the the command line and"
-    ; "emits them hyphenated to stdout."
+    ; "emits them hyphenated to stdout. Before hyphenation, words are"
+    ; "turned to lower case."
     ; ""
     ; "(c) 2012 Christian Lindig <lindig@gmail.com>"
+    ; "https://github.com/lindig/ocaml-hyphenate"
     ]
 
 let print lang word = 
@@ -505,7 +509,8 @@ let main () =
         match args with
         | ["-f"; path]  -> List.iter (print language) (words_in path)
         | "-h" :: _     -> usage this
-        | word :: _     -> List.iter (print language) args         
+        | word :: _     -> List.iter (print language) 
+                            (List.map String.lowercase args)         
         | _             -> usage this
 
 let _ = main (); exit 0
