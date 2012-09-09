@@ -6,3 +6,10 @@ _build
 *.d.byte
 
 
+
+/_build
+/demo.ml
+/hyphenate.ml
+/hyphenate.mli
+/hyphenate_reader.mli
+/hyphenate_reader.mll
