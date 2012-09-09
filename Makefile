@@ -1,8 +1,13 @@
-
 #
 # Makefile
 #
+# Lipsum is available from https://github.com/lindig/lipsum. Try
+#
+#   make lipsum
+#
+# to build it and edit the definition of LP below to use it.
 
+LP		= ./lipsum/lipsum
 LP 		= lipsum
 OCB 		= ocamlbuild
 
@@ -23,6 +28,7 @@ debug:		$(SRC)
 clean: 		
 		$(OCB) -clean
 		rm -f $(SRC) $(DOC)
+		# rm -f lipsum
 
 %.ml:		hyphen.lp
 		$(LP) tangle -f cpp $@ $< > $@
@@ -35,3 +41,8 @@ clean:
 
 README.md: 	hyphen.lp
 		$(LP) weave $< > $@
+
+lipsum:
+		git clone https://github.com/lindig/lipsum
+		cd lipsum && make
+
