@@ -244,17 +244,24 @@ pattern.
     type t   = 
         { patterns:             (string, int array) Hashtbl.t (* key, value *)
         ; mutable maxlen:       int (* longest key in patterns *)
+        ; mutable minlen:       int (* shortest key in patterns *)
         }
     
     let make () =                           (* create empty value *)
         { patterns  =   Hashtbl.create 4999 (* a prime number *)
         ; maxlen    =   0
+        ; minlen    =   max_int                
         }
     
     
     <<hyphenate.ml>>=
     exception Error of string
     let error msg = raise (Error msg)
+    
+    
+    let debug fmt   = Printf.kprintf (fun msg -> prerr_string msg) fmt
+    let debug fmt   = Printf.kprintf (fun msg -> ()) fmt
+    
     
     
 Some small utilities.
@@ -350,6 +357,7 @@ the `texword` argument has a suitable format.
         let word, breaks = split pattern in
             ( Hashtbl.add t.patterns word breaks
             ; t.maxlen <- max t.maxlen (String.length word)
+            ; t.minlen <- min t.minlen (String.length word)
             )
     
     
@@ -449,28 +457,6 @@ as it is not explained in _The TeXbook_)
             List.rev (loop 2 [])
     
     
-To hyphenate a word, we put a dot `.` at the beginning and end and use 
-a sliding window to find all matching patterns in the pattern dictionary.
-The result is an array that tells us about good hyphenation points.  When a
-matching pattern is found, the corresponding hyphenation points are
-fetched combined with the ones already found. We try to find all patterns
-in the dictionary up to the maximum pattern length or the length of the
-word, whatever is shorter.
-
-    <<hyphenate.ml>>=
-    let hyphenate t (word:string): string list =
-        let word   = "." ^ word ^ "." in
-        let breaks = Array.make (String.length word + 1) 0 in
-        let lookup pos substr:unit =
-            combine pos (Hashtbl.find t.patterns substr) breaks in
-        let lookup' pos substr = try lookup pos substr with Not_found -> ()
-        in
-            for i = 1 to min t.maxlen (String.length word) do
-                slide i word lookup' 
-            done;
-            split word breaks
-    
-    
 For debugging, we join a word and its break points into a string again
 that can be easily printed.
 
@@ -486,7 +472,33 @@ that can be easily printed.
         done; 
         str.[String.length word * 2] <- i2c breaks.(String.length word);
         str
-           
+    
+    
+To hyphenate a word, we put a dot `.` at the beginning and end and use a
+sliding window to find all matching patterns in the pattern dictionary.
+The result is an array that tells us about good hyphenation points.  When a
+matching pattern is found, the corresponding hyphenation points are
+combined with the ones already found. We try to find all patterns in the
+dictionary up to the maximum pattern length or the length of the word,
+whatever is shorter.
+
+    <<hyphenate.ml>>=
+    let hyphenate t (word:string): string list =
+        let word   = "." ^ word ^ "." in
+        let len    = String.length word in
+        let breaks = Array.make (len + 1) 0 in
+        let lookup pos substr:unit =
+            ( debug "%s%s\n" (String.make pos ' ') substr
+            ; combine pos (Hashtbl.find t.patterns substr) breaks 
+            ; debug "%s\n" (join word breaks)
+            ) in
+        let lookup' pos substr = try lookup pos substr with Not_found -> ()
+        in
+            for i = t.minlen to min t.maxlen len do
+                slide i word lookup'
+            done;
+            debug "%s\n" (join word breaks);
+            split word breaks
     
     
     <<hyphenate.ml>>=
