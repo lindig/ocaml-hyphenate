@@ -350,6 +350,24 @@ let normalize (texword:string): string * int array =
         ( ignore (* int *) (foldstr scan 0 texword)
         ; word, breaks
         )
+@ For debugging, we join a word and its break points into a string again
+that can be easily printed. In a sense, `join` is a dual to `normalize`.
+
+<<hyphenate.ml>>=
+let join (word:string) (breaks:int array): string =
+    assert (Array.length breaks = String.length word + 1);
+    let i2c i = Char.chr (i + Char.code '0') in
+    let str = String.make (Array.length breaks + String.length word) ' ' in
+    for i = 0 to String.length word - 1 do
+        ( str.[i*2]   <- i2c breaks.(i)
+        ; str.[i*2+1] <- word.[i]
+        )
+    done; 
+    str.[String.length word * 2] <- i2c breaks.(String.length word);
+    str
+
+@ `add` adds a new pattern to dictionary `t` and maintains the `minlen` and
+`maxlen` fields.
 
 <<hyphenate.ml>>=
 let add (t:t) pattern: unit =
@@ -381,7 +399,7 @@ within the string, that is, all possible hyphenation points. For a window
 of size _m_ the integer array has size _m+1_, which is the number of
 hyphenation points for a string of size _m_. 
 
-When we desire to hyphenate a word of size _n_, the various sliding windows
+When we plan to hyphenate a word of size _n_, the various sliding windows
 retrieve associated hyphenation points which are combined into one array of
 size _n+1_ such that each hyphenation point has an integer assigned.
 
@@ -390,11 +408,11 @@ point by point: the large array starts with all zeros. As the smaller array
 is slid over the large array, the value in the large array at position _i_
 is the maximum of the existing value and the value in the smaller array.
 
-Adding a small integer array to a large array is implemented by function
-`combine`.  It takes a `small` and a `large` array as arguments and the
-index `i` of the element in the large array that is aligned with the first
-element (0) of the smaller array. Since we are dealing with arrays, the
-result is an updated large array. 
+Combining a small integer array with a large array is implemented by
+function `combine`.  It takes a `small` and a `large` array as arguments
+and the index `i` of the element in the large array that is aligned with
+the first element (0) of the smaller array. The result is an updated large
+array. 
 
 <<hyphenate.ml>>=
 let combine ~(first:int) ~(small:int array) ~(large:int array): unit =
@@ -447,11 +465,26 @@ used, it is possible to override decisions but numbers can't cancel each
 other out. The higher the number, the stronger the suitability for
 hyphenation or not.
 
+Function `split` implements splitting a word into parts at hyphenation
+points. It takes all clues from the array `breaks` that assigns a value to
+each potential hyphenation point as explained above. 
+
+Break point _i_ belongs to the gap between characters _i-1_ and _i_: 
+
+    word    . h y p h e n a t i o n .                word
+    word    0 1 2 3 4 5 6 7 8 9 1 2 3     index  for word
+    breaks 0 1 2 3 4 5 6 7 8 9 1 2 3 4    index  for breaks
+    breaks 0 0 0 3 0 0 2 5 4 2 0 2 0 0    value  for breaks 
+            . h y-p h e n-a t i o n .                 
+
+Predicate `is_hp` signals that break point _i_ is suitable. 
+Todo: TeX does not permit hyphenation close to the beginning or end of a
+word. This is currently not implemented and could be integrated into
+the `is_hp` predicate.
 
 <<hyphenate.ml>>=
 let is_hp n = n > 0 && n mod 2 <> 0
-
-let split (word:string) (breaks:int array) =
+let split (word:string) (breaks:int array): string list =
     assert (Array.length breaks = String.length word + 1);
     let limit = Array.length breaks - 2 in
     let rec next_hp i = 
@@ -463,22 +496,6 @@ let split (word:string) (breaks:int array) =
             else loop (n+1) (String.sub word (i-1) (n-i+1) :: acc)
     in
         List.rev (loop 2 [])
-
-@ For debugging, we join a word and its break points into a string again
-that can be easily printed.
-
-<<hyphenate.ml>>=
-let join (word:string) (breaks:int array): string =
-    assert (Array.length breaks = String.length word + 1);
-    let i2c i = Char.chr (i + Char.code '0') in
-    let str = String.make (Array.length breaks + String.length word) ' ' in
-    for i = 0 to String.length word - 1 do
-        ( str.[i*2]   <- i2c breaks.(i)
-        ; str.[i*2+1] <- word.[i]
-        )
-    done; 
-    str.[String.length word * 2] <- i2c breaks.(String.length word);
-    str
 
 @ To hyphenate a word, we put a dot `.` at the beginning and end and use a
 sliding window to find all matching patterns in the pattern dictionary.
