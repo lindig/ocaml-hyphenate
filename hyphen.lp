@@ -417,9 +417,21 @@ let load (path:path): t =
 we know about the hyphenation points. For a word of size _n_ there are
 _n+1_ potential hyphenation points (including before and after the word).
 Array `breaks` of size _n+1_ assigns a value to each hyphenation point. A
-possible hyphenation is found, if the assigned value is odd. (I actually
-don't know what this is and would probably have to read the original paper
-as it is not explained in _The TeXbook_)
+possible hyphenation is found, if the assigned value is odd. For example,
+here are the hyphenation points for _hyphenation_:
+
+    0h0y3p0h0e2n5a4t2i0o2n0
+     h y-p h e n-a t i o n
+
+The first hyphen correspond to hyphenation points with value 3, the second
+to the point with value 5.
+
+Using odd values to indicate hyphenation points is just a convention that
+is used in TeX's hyphenation patterns. Likewise, even numbers are used to
+discourage hyphenation. Since always the maximum is used, it is possible to
+override decisions but numbers can't cancel each other out. The higher the
+nunber, the stronger the suitability for hypheneation or not.
+
 
 <<hyphenate.ml>>=
 let is_hp n = n > 0 && n mod 2 <> 0
