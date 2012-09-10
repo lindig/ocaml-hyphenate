@@ -328,7 +328,7 @@ let foldstr f zero str =
 let letters (word:string): int = 
     foldstr (fun n c -> if is_letter c then n+1 else n) 0 word
 
-@ Function `split` takes a pattern as it is read from a pattern file and
+@ Function `normalize` takes a pattern as it is read from a pattern file and
 splits it into a pattern -- a string of length _n_ and an array of size
 _n+1_. For a letter at position _i_ in the string, the array indices _i_
 and _i+1_ assign a value to points before and after the letter that
@@ -338,7 +338,7 @@ scans the pattern that was read from the file. We rely on the scanner that
 the `texword` argument has a suitable format.
 
 <<hyphenate.ml>>=
-let split (texword:string): string * int array =
+let normalize (texword:string): string * int array =
     let n      = letters texword in
     let word   = String.make n ' ' in
     let breaks = Array.create (n+1) 0 in
@@ -353,7 +353,7 @@ let split (texword:string): string * int array =
 
 <<hyphenate.ml>>=
 let add (t:t) pattern: unit =
-    let word, breaks = split pattern in
+    let word, breaks = normalize pattern in
         ( Hashtbl.add t.patterns word breaks
         ; t.maxlen <- max t.maxlen (String.length word)
         ; t.minlen <- min t.minlen (String.length word)
