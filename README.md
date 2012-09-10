@@ -49,6 +49,29 @@ words from a text file or the command line.
     (c) 2012 Christian Lindig <lindig@gmail.com>
     https://github.com/lindig/ocaml-hyphenate
 
+## Performance
+
+Hyphenating a word takes about 60 Microseconds on a 2.4 GHz MacBook Pro:
+
+    time ./demo.native -f /usr/share/dict/words | wc
+      234936  234936 2932821
+
+    real	0m13.971s
+    user	0m13.577s
+    sys	0m1.341s
+
+Surely the implementation leaves a lot of room for optimization but I
+can't justify the effort now. The implementation creates many substrings
+from the word being hyphenated and these are represented as copies in
+Objective Caml. A string representation that only uses indices into an
+existing string could avoid creating copies. Another potential for
+optimization is the representation of hyphenation patterns. The
+implementation stores them in a hash table. I haven't looked into this but
+I believe a better representation would take advantage of the fact that
+lookup operations are correlated: lookup operations result from sliding a
+window over the word to be hyphenated. Hence, two lookup operations are
+looking for words that are quite similar. It should be possible to exploit
+this. The implementation of TeX would be the first place to look for ideas.
 
 ## References
 
@@ -205,7 +228,6 @@ in the rest of the file.
     
     
 Rule `token`  recognizes a pattern as it is in a file. 
-attempt to add the implicit `0` digits or to split letters and digits.
 
     <<rules>>=
     rule token = parse
@@ -245,9 +267,8 @@ case).
 This module implements the hyphenation algorithm using hyphenation
 patterns. Hyphenation patterns for a language are simply stored in a
 hashtable mapping strings of length _n_ to _n+1_ possible hyphenation
-points. We also remmember the longest pattern such that we can avoid
-searching for any pattern that exceeds the lengths of the longest stored
-pattern.
+points. We also remember the maximum and minimum pattern size such that we
+can avoid searching for any pattern that falls outside these bounds.
 
     <<hyphenate.ml>>=
     type path       = string      (* a file path *)
@@ -531,16 +552,16 @@ whatever is shorter.
         let len    = String.length word in
         let breaks = Array.make (len + 1) 0 in
         let lookup pos substr:unit =
-            ( debug "%s%s\n" (String.make pos ' ') substr
+            ( () (* debug "%s%s\n" (String.make pos ' ') substr *)
             ; combine pos (Hashtbl.find t.patterns substr) breaks 
-            ; debug "%s\n" (join word breaks)
+            ; () (* debug "%s\n" (join word breaks) *)
             ) in
         let lookup' pos substr = try lookup pos substr with Not_found -> ()
         in
             for i = t.minlen to min t.maxlen len do
                 slide i word lookup'
             done;
-            debug "%s\n" (join word breaks);
+            (* debug "%s\n" (join word breaks); *)
             split word breaks
     
     

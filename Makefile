@@ -25,10 +25,16 @@ all: 		$(SRC) $(DOC)
 debug:		$(SRC)
 		$(OCB) demo.d.byte
 
+profile:	$(SRC)
+		$(OCB) demo.p.native
 clean: 		
 		$(OCB) -clean
 		rm -f $(SRC) $(DOC)
+		rm -f gmon.out
 		# rm -f lipsum
+
+performance:	all
+		time ./demo.native -f /usr/share/dict/words | wc
 
 %.ml:		hyphen.lp
 		$(LP) tangle -f cpp $@ $< > $@
@@ -44,5 +50,5 @@ README.md: 	hyphen.lp
 
 lipsum:
 		git clone https://github.com/lindig/lipsum
-		cd lipsum && make
+		$(MAKE) -C lipsum
 
