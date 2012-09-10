@@ -171,7 +171,7 @@ OCamlLex scanner generator.
 
     <<hyphenate_reader.mll>>=
     {
-        <<prolog>>
+        <<prologue>>
     }
     <<rules>>
     {
@@ -179,10 +179,10 @@ OCamlLex scanner generator.
     }
     
     
-The prolog contains generally useful definitions that can be used
+The prologueue contains generally useful definitions that can be used
 in the rest of the file.
 
-    <<prolog>>=
+    <<prologue>>=
     exception Error of string
     let error fmt   = Printf.kprintf (fun msg -> raise (Error msg)) fmt
     
@@ -268,12 +268,16 @@ pattern.
     exception Error of string
     let error msg = raise (Error msg)
     
+    
+Some small utilities. Function `debug` is basically a printf function
+for stdout. This is not very clever as we would like to avoid evaluating
+its arguments when we are not debugging.
+
+    <<hyphenate.ml>>=
     let debug fmt   = Printf.kprintf (fun msg -> prerr_string msg) fmt
     let debug fmt   = Printf.kprintf (fun msg -> ()) fmt
     
     
-Some small utilities.
-
     <<hyphenate.ml>>=
     let (@.) f g x  = f (g x)   (* function composition *)
     let (@@) f x    = f x 
@@ -299,8 +303,9 @@ but it can be convenient to have access to it.)
 Below are functions that split a pattern as it is read from a file
 into a pattern value.
 
-First some predicates to classify characters as letters and digits and
-computer the integer value of a digit.
+First some predicates to classify characters as letters and digits.
+`int_of` computes the integer value of a digit.
+
     <<hyphenate.ml>>=
     let is_digit = function
         | '0'..'9' -> true
@@ -386,11 +391,11 @@ substring.
     
 The basic idea to compute hyphenation points using patterns is as follows:
 given a string, we slide windows of increasing size 1, 2, 3, ... over this
-string. Every window content is taken as a key to look up an assoiciated
+string. Every window content is taken as a key to look up an associated
 array of integers that assigns numbers to every point before, after, and
 within the string, that is, all possible hyphenation points. For a window
 of size _m_ the integer array has size _m+1_, which is the number of
-hypheneation points for a string of size _m_. 
+hyphenation points for a string of size _m_. 
 
 When we desire to hyphenate a word of size _n_, the various sliding windows
 retrieve associated hyphenation points which are combined into one array of
@@ -457,8 +462,8 @@ Using odd values to indicate hyphenation points is just a convention that
 is used in TeX's hyphenation patterns. Likewise, even numbers are used to
 discourage hyphenation. Since always the maximum (in function `combine`) is
 used, it is possible to override decisions but numbers can't cancel each
-other out. The higher the nunber, the stronger the suitability for
-hypheneation or not.
+other out. The higher the number, the stronger the suitability for
+hyphenation or not.
 
 
     <<hyphenate.ml>>=
