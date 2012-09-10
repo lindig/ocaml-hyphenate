@@ -29,16 +29,26 @@ the `Makefile`. It supports downloading and building Lipsum.
 Running Make builds a small demo application that can be used to hyphenate
 words from a text file or the command line.
 
-    ./demo.native Compilation Requirements
-    Com-pi-la-tion
-    Re-quire-ments
+    $ ./demo.native Compilation Requirements
+    com-pi-la-tion
+    re-quire-ments
 
-    ./demo.native -h
-    demo.native -f file.txt
-    demo.native word .. 
+    $ ./demo.native -h
+    demo.native usage:
+
+    demo.native -f file.txt          hypenate words in file.txt
+    demo.native word ..              hyphenate arguments
+    demo.native -h                   emit help
+    demo.native -d                   emit hyphenation patterns
 
     demo.native reads words from a file or the the command line and
-    emits them hyphenated to stdout.
+    emits them hyphenated to stdout. Before hyphenation, words are
+    turned to lower case. demo.native uses built-in patterns for
+    US English.
+
+    (c) 2012 Christian Lindig <lindig@gmail.com>
+    https://github.com/lindig/ocaml-hyphenate
+
 
 ## References
 
@@ -440,14 +450,15 @@ here are the hyphenation points for _hyphenation_:
     0h0y3p0h0e2n5a4t2i0o2n0
      h y-p h e n-a t i o n
 
-The first hyphen correspond to hyphenation points with value 3, the second
-to the point with value 5.
+The first hyphen correspond to the hyphenation point with value 3, the
+second to the point with value 5.
 
 Using odd values to indicate hyphenation points is just a convention that
 is used in TeX's hyphenation patterns. Likewise, even numbers are used to
-discourage hyphenation. Since always the maximum is used, it is possible to
-override decisions but numbers can't cancel each other out. The higher the
-nunber, the stronger the suitability for hypheneation or not.
+discourage hyphenation. Since always the maximum (in function `combine`) is
+used, it is possible to override decisions but numbers can't cancel each
+other out. The higher the nunber, the stronger the suitability for
+hypheneation or not.
 
 
     <<hyphenate.ml>>=
