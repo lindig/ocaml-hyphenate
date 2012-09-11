@@ -1,7 +1,7 @@
 
 # Hyphenation
 
-This software implements hyphentation of words for Objective Caml based on
+This software implements hyphenation of words for Objective Caml based on
 the algorithm implemented in TeX and using the hyphenation patterns
 provided for TeX.
 
@@ -51,7 +51,7 @@ words from a text file or the command line.
 
 ## Performance
 
-Hyphenating a word takes about 15 Microseconds on a 2.4 GHz MacBook Pro:
+Hyphenating a word takes about 15 microseconds on a 2.4 GHz MacBook Pro:
 
     time ./demo.native -f /usr/share/dict/words | wc
       234936  234936 2932821
