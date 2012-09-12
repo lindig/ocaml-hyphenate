@@ -1,9 +1,9 @@
 
 # Hyphenation
 
-This software implements hyphenation of words for Objective Caml based on
-the algorithm implemented in TeX and using the hyphenation patterns
-provided for TeX.
+This software implements hyphenation of words in Objective Caml as a module
+based on the algorithm implemented in TeX and using the hyphenation
+patterns provided for TeX.
 
 ## Requirements and Compilation
 
@@ -72,6 +72,17 @@ lookup operations are correlated: lookup operations result from sliding a
 window over the word to be hyphenated. Hence, two lookup operations are
 looking for words that are quite similar. It should be possible to exploit
 this. The implementation of TeX would be the first place to look for ideas.
+
+
+## Ideas for Future Work
+
+* The interface could provide a function does returns the result not as
+  list of strings but as a list or array of points that indicate where to
+  split a word.
+
+* Implement Unicode handling (and hence give up simple strings for the
+  representation of words.)  
+
 
 ## References
 
@@ -202,7 +213,7 @@ OCamlLex scanner generator.
     }
     
     
-The prologueue contains generally useful definitions that can be used
+The prologue contains generally useful definitions that can be used
 in the rest of the file.
 
     <<prologue>>=
@@ -266,7 +277,7 @@ case).
 
 This module implements the hyphenation algorithm using hyphenation
 patterns. Hyphenation patterns for a language are simply stored in a
-hashtable mapping strings of length _n_ to _n+1_ possible hyphenation
+hash table mapping strings of length _n_ to _n+1_ possible hyphenation
 points. We also remember the maximum and minimum pattern size such that we
 can avoid searching for any pattern that falls outside these bounds.
 
@@ -291,7 +302,7 @@ can avoid searching for any pattern that falls outside these bounds.
     
     
 Some small utilities. Function `debug` is basically a printf function
-for stdout. This is not very clever as we would like to avoid evaluating
+for _stdout_. This is not very clever as we would like to avoid evaluating
 its arguments when we are not debugging.
 
     <<hyphenate.ml>>=

@@ -33,7 +33,10 @@ clean:
 		rm -f gmon.out
 		# rm -f lipsum
 
+test:		performance
+
 performance:	all
+		echo "expect about 3.5 seconds real time"
 		time ./demo.native -f /usr/share/dict/words | wc
 
 %.ml:		hyphen.lp
