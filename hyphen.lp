@@ -34,16 +34,16 @@ words from a text file or the command line.
     re-quire-ments
 
     $ ./demo.native -h
-    demo.native usage:
+    demo usage:
 
-    demo.native -f file.txt          hypenate words in file.txt
-    demo.native word ..              hyphenate arguments
-    demo.native -h                   emit help
-    demo.native -d                   emit hyphenation patterns
+    demo -f file.txt          hypenate words in file.txt
+    demo word ..              hyphenate arguments
+    demo -h                   emit help
+    demo -d                   emit hyphenation patterns
 
-    demo.native reads words from a file or the the command line and
+    demo reads words from a file or the command line and
     emits them hyphenated to stdout. Before hyphenation, words are
-    turned to lower case. demo.native uses built-in patterns for
+    turned to lower case. demo uses built-in patterns for
     US English.
 
     (c) 2012 Christian Lindig <lindig@gmail.com>
@@ -76,9 +76,12 @@ this. The implementation of TeX would be the first place to look for ideas.
 
 ## Ideas for Future Work
 
-* The interface could provide a function does returns the result not as
-  list of strings but as a list or array of points that indicate where to
-  split a word.
+* The interface could provide an additional function that returns the
+  result  not as list of strings but as a list or array of points that
+  indicate where to split a word.
+
+* Maybe we need a function that suggests a particular hyphenation based
+  space requirements. But maybe this is better left for client code.
 
 * Implement Unicode handling (and hence give up simple strings for the
   representation of words.)  
@@ -600,7 +603,7 @@ let usage this =
     ; this ^ " -h                   emit help"
     ; this ^ " -d                   emit hyphenation patterns" 
     ; ""
-    ; this^" reads words from a file or the the command line and"
+    ; this^" reads words from a file or the command line and"
     ; "emits them hyphenated to stdout. Before hyphenation, words are"
     ; "turned to lower case. "^this^" uses built-in patterns for"
     ; "US English."  
@@ -621,7 +624,9 @@ let words_in path   = finally words' (open_in path) close_in
 
 let main () =
     let argv        = Array.to_list Sys.argv in
-    let this        = Filename.basename (List.hd argv) in
+    let this        = Filename.chop_extension 
+                        @@ Filename.basename 
+                        @@ List.hd argv in
     let args        = List.tl argv in    
     let language    = Hyphenate_us.t in
         match args with
