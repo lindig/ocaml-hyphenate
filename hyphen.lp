@@ -143,7 +143,14 @@ exception Error of string
 type t                          (* mutable *)   
 type path = string              (* file path *)
 
-val make: unit -> t             (* create empty value *)
+@ The `make` constructor takes three integer argument:
+
+* The minimum number of characters before the first hyphen
+* The minimum number of characters after the last hyphen
+* The minimum length of a word that gets hyphenated
+
+<<hyphenate.mli>>=
+val make: int -> int -> int -> t            
 val add:  t -> string -> unit   (* add a pattern to a language *)
 
 val load: path -> t             (* may raise Error *)
@@ -283,14 +290,20 @@ can avoid searching for any pattern that falls outside these bounds.
 type path       = string      (* a file path *)
 type t   = 
     { patterns:             (string, int array) Hashtbl.t (* key, value *)
-    ; mutable maxlen:       int (* longest key in patterns *)
-    ; mutable minlen:       int (* shortest key in patterns *)
+    ; mutable maxpatlen:    int (* longest key in patterns *)
+    ; mutable minpatlen:    int (* shortest key in patterns *)
+    ; minhead:              int
+    ; mintail:              int
+    ; minlen:               int (* shorter words are not hyphenated *)
     }
 
-let make () =                           (* create empty value *)
-    { patterns  =   Hashtbl.create 4999 (* a prime number *)
-    ; maxlen    =   0
-    ; minlen    =   max_int                
+let make minhead mintail minlen =                 (* create empty value *)
+    { patterns          =   Hashtbl.create 4999 (* a prime number *)
+    ; maxpatlen         =   0
+    ; minpatlen         =   max_int                
+    ; minhead           =   minhead (* at least 1 char before 1st hyphen *)
+    ; mintail           =   mintail 
+    ; minlen            =   minlen
     }
 
 <<hyphenate.ml>>=
@@ -401,15 +414,15 @@ let join (word:string) (breaks:int array): string =
     str.[String.length word * 2] <- i2c breaks.(String.length word);
     str
 
-@ `add` adds a new pattern to dictionary `t` and maintains the `minlen` and
+@ `add` adds a new pattern to dictionary `t` and maintains the `minpatlen` and
 `maxlen` fields.
 
 <<hyphenate.ml>>=
 let add (t:t) pattern: unit =
     let word, breaks = normalize pattern in
         ( Hashtbl.add t.patterns word breaks
-        ; t.maxlen <- max t.maxlen (String.length word)
-        ; t.minlen <- min t.minlen (String.length word)
+        ; t.maxpatlen <- max t.maxpatlen (String.length word)
+        ; t.minpatlen <- min t.minpatlen (String.length word)
         )
 
 @ The `slide` function takes a string and a function `f` and applies it to
@@ -464,7 +477,7 @@ scanner).
 <<hyphenate.ml>>=
 let load' io: t =
     let lexbuf      = Lexing.from_channel io                in
-    let t           = make ()                               in
+    let t           = make 2 2 4 (* need o fix this *)      in
     let rec loop lb =
         match Hyphenate_reader.read lb with
             | Hyphenate_reader.EOF -> t
@@ -512,25 +525,35 @@ Break point _i_ belongs to the gap between characters _i-1_ and _i_:
     breaks 0 0 0 3 0 0 2 5 4 2 0 2 0 0    value  for breaks 
             . h y-p h e n-a t i o n .                 
 
-Predicate `is_hp` signals that break point _i_ is suitable. 
-Todo: TeX does not permit hyphenation close to the beginning or end of a
-word. This is currently not implemented and could be integrated into
-the `is_hp` predicate.
+    minhead         = 1
+    mintail         = 2
+    length breaks   = 15
+    first           = 1 + 1  = 2
+    last            = 15 - 3 = 12
 
 <<hyphenate.ml>>=
-let is_hp n = n > 0 && n mod 2 <> 0
-let split (word:string) (breaks:int array): string list =
+let take string first last  = String.sub string first (last - first + 1)
+let is_odd (n:int): bool    = n mod 2 = 1
+
+let rec next_hp breaks i =
+    if i >= Array.length breaks then None
+    else if is_odd breaks.(i)   then Some i
+    else next_hp breaks (i+1)
+ 
+let split (t:t) (word:string) (breaks:int array): string list =
     assert (Array.length breaks = String.length word + 1);
-    let limit = Array.length breaks - 2 in
-    let rec next_hp i = 
-        if is_hp breaks.(i) or i >= limit then i else next_hp (i+1) in
-    let rec loop i acc =
-        let n = next_hp i in
-            if  n >= limit 
-            then String.sub word (i-1) (n-i+1) :: acc
-            else loop (n+1) (String.sub word (i-1) (n-i+1) :: acc)
-    in
-        List.rev (loop 2 [])
+    let word_len   = String.length word in
+    let first_char = 1 in (* word *)
+    let last_char  = word_len  - 2 in (* word *)
+    let first_bp   = t.minhead + 1 in (* breaks *)
+    let last_bp    = word_len - t.mintail - 1 in (* breaks *)
+    let rec loop i (* word *) acc = match next_hp breaks (i+1) with
+        | None                     -> take word i last_char :: acc 
+        | Some j when j > last_bp  -> take word i last_char :: acc
+        | Some j when j < first_bp -> loop j acc
+        | Some j -> loop j (take word i (j-1) :: acc)
+    in 
+        List.rev @@ loop first_char []
 
 @ To hyphenate a word, we put a dot `.` at the beginning and end and use a
 sliding window to find all matching patterns in the pattern dictionary.
@@ -542,6 +565,7 @@ whatever is shorter.
 
 <<hyphenate.ml>>=
 let hyphenate t (word:string): string list =
+    if String.length word < t.minlen then [word] else
     let word   = "." ^ word ^ "." in
     let len    = String.length word in
     let breaks = Array.make (len + 1) 0 in
@@ -552,11 +576,11 @@ let hyphenate t (word:string): string list =
         ) in
     let lookup' pos substr = try lookup pos substr with Not_found -> ()
     in
-        for i = t.minlen to min t.maxlen len do
+        for i = t.minpatlen to min t.maxpatlen len do
             slide i word lookup'
         done;
         (* debug "%s\n" (join word breaks); *)
-        split word breaks
+        split t word breaks
 
 <<hyphenate.ml>>=
 let dump t =

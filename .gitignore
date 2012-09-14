@@ -13,3 +13,4 @@ _build
 /hyphenate.mli
 /hyphenate_reader.mli
 /hyphenate_reader.mll
+/gmon.out

@@ -1,5 +1,5 @@
 
-let t = Hyphenate.make ()
+let t = Hyphenate.make 2 2 4
 let _ = List.iter (fun str -> Hyphenate.add t str)
 [
 ".ach4";
