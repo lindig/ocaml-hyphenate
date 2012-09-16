@@ -538,10 +538,9 @@ let is_odd (n:int): bool    = n mod 2 = 1
 
 let next_hp breaks first last i =
     let rec loop i =
-        if i >= Array.length breaks then None
-        else if i < first           then loop (i+1)
-        else if i > last            then None
-        else if is_odd breaks.(i)   then Some i
+        if i > last or i >= Array.length breaks then None
+        else if i < first                       then loop (i+1)
+        else if is_odd breaks.(i)               then Some i
         else loop (i+1)
     in
         loop i

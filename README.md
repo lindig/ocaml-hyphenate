@@ -558,10 +558,9 @@ Break point _i_ belongs to the gap between characters _i-1_ and _i_:
     
     let next_hp breaks first last i =
         let rec loop i =
-            if i >= Array.length breaks then None
-            else if i < first           then loop (i+1)
-            else if i > last            then None
-            else if is_odd breaks.(i)   then Some i
+            if i > last or i >= Array.length breaks then None
+            else if i < first                       then loop (i+1)
+            else if is_odd breaks.(i)               then Some i
             else loop (i+1)
         in
             loop i
