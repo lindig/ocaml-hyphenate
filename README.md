@@ -146,12 +146,13 @@ word into disjoint substrings:
     
 The `make` constructor takes three integer argument:
 
-* The minimum number of characters before the first hyphen
-* The minimum number of characters after the last hyphen
-* The minimum length of a word that gets hyphenated
+* `minpre` - the minimum number of characters before the first hyphen
+* `minpost` - the minimum number of characters after the last hyphen
+* `minlen` - the minimum length of a word that gets hyphenated
+
 
     <<hyphenate.mli>>=
-    val make: int -> int -> int -> t            
+    val make: minpre:int -> minpost:int -> minlen:int -> t            
     val add:  t -> string -> unit   (* add a pattern to a language *)
     
     val load: path -> t             (* may raise Error *)
@@ -298,17 +299,17 @@ can avoid searching for any pattern that falls outside these bounds.
         { patterns:             (string, int array) Hashtbl.t (* key, value *)
         ; mutable maxpatlen:    int (* longest key in patterns *)
         ; mutable minpatlen:    int (* shortest key in patterns *)
-        ; minhead:              int
-        ; mintail:              int
+        ; minpre:               int
+        ; minpost:              int
         ; minlen:               int (* shorter words are not hyphenated *)
         }
     
-    let make minhead mintail minlen =                 (* create empty value *)
+    let make ~minpre ~minpost ~minlen =                 (* create empty value *)
         { patterns          =   Hashtbl.create 4999 (* a prime number *)
         ; maxpatlen         =   0
         ; minpatlen         =   max_int                
-        ; minhead           =   minhead (* at least 1 char before 1st hyphen *)
-        ; mintail           =   mintail 
+        ; minpre            =   minpre (* at least 1 char before 1st hyphen *)
+        ; minpost           =   minpost 
         ; minlen            =   minlen
         }
     
@@ -323,8 +324,8 @@ for _stdout_. This is not very clever as we would like to avoid evaluating
 its arguments when we are not debugging.
 
     <<hyphenate.ml>>=
-    let debug fmt   = Printf.kprintf (fun msg -> prerr_string msg) fmt
     let debug fmt   = Printf.kprintf (fun msg -> ()) fmt
+    let debug fmt   = Printf.kprintf (fun msg -> prerr_string msg) fmt
     
     
     <<hyphenate.ml>>=
@@ -545,8 +546,8 @@ Break point _i_ belongs to the gap between characters _i-1_ and _i_:
     breaks 0 0 0 3 0 0 2 5 4 2 0 2 0 0    value  for breaks 
             . h y-p h e n-a t i o n .                 
 
-    minhead         = 1
-    mintail         = 2
+    minpre         = 1
+    minpost         = 2
     length breaks   = 15
     first           = 1 + 1  = 2
     last            = 15 - 3 = 12
@@ -555,22 +556,32 @@ Break point _i_ belongs to the gap between characters _i-1_ and _i_:
     let take string first last  = String.sub string first (last - first + 1)
     let is_odd (n:int): bool    = n mod 2 = 1
     
-    let rec next_hp breaks i =
-        if i >= Array.length breaks then None
-        else if is_odd breaks.(i)   then Some i
-        else next_hp breaks (i+1)
+    let next_hp breaks first last i =
+        let rec loop i =
+            if i >= Array.length breaks then None
+            else if i < first           then loop (i+1)
+            else if i > last            then None
+            else if is_odd breaks.(i)   then Some i
+            else loop (i+1)
+        in
+            loop i
+    
+
+    <<hyphenate.ml>>=
      
     let split (t:t) (word:string) (breaks:int array): string list =
+        (* debug "split %s %s\n" word (join word breaks); *)
         assert (Array.length breaks = String.length word + 1);
         let word_len   = String.length word in
         let first_char = 1 in (* word *)
         let last_char  = word_len  - 2 in (* word *)
-        let first_bp   = t.minhead + 1 in (* breaks *)
-        let last_bp    = word_len - t.mintail - 1 in (* breaks *)
-        let rec loop i (* word *) acc = match next_hp breaks (i+1) with
-            | None                     -> take word i last_char :: acc 
-            | Some j when j > last_bp  -> take word i last_char :: acc
-            | Some j when j < first_bp -> loop j acc
+        let first_bp   = t.minpre + 1 in (* breaks *)
+        let last_bp    = word_len - t.minpost - 1 in (* breaks *)
+        (* debug "first:%d last:%d first_bp:%d last_bp:%d\n"
+            first_char last_char first_bp last_bp; *)
+        let rec loop i (* word *) acc = 
+            match next_hp breaks first_bp last_bp (i+1) with
+            | None   -> take word i last_char :: acc 
             | Some j -> loop j (take word i (j-1) :: acc)
         in 
             List.rev @@ loop first_char []
