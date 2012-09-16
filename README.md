@@ -155,7 +155,7 @@ The `make` constructor takes three integer argument:
     val make: minpre:int -> minpost:int -> minlen:int -> t            
     val add:  t -> string -> unit   (* add a pattern to a language *)
     
-    val load: path -> t             (* may raise Error *)
+    val load: path -> minpre:int -> minpost:int -> minlen:int -> t (* Error *)
     val dump: t -> unit             (* for debugging *)
     
     val hyphenate: t -> string -> string list
@@ -431,8 +431,8 @@ that can be easily printed. In a sense, `join` is a dual to `normalize`.
         str
     
     
-`add` adds a new pattern to dictionary `t` and maintains the `minpatlen` and
-`maxlen` fields.
+`add` adds a new pattern to dictionary `t` and maintains the `minpatlen`
+and `maxpatlen` fields.
 
     <<hyphenate.ml>>=
     let add (t:t) pattern: unit =
@@ -495,9 +495,9 @@ exception is raised (most likely due to syntax errors detected in the
 scanner).
 
     <<hyphenate.ml>>=
-    let load' io: t =
-        let lexbuf      = Lexing.from_channel io                in
-        let t           = make 2 2 4 (* need o fix this *)      in
+    let load' minpre minpost minlen io: t =
+        let lexbuf      = Lexing.from_channel io      in
+        let t           = make minpre minpost minlen  in
         let rec loop lb =
             match Hyphenate_reader.read lb with
                 | Hyphenate_reader.EOF -> t
@@ -508,10 +508,10 @@ scanner).
         in
             loop lexbuf
     
-    let load (path:path): t =
+    let load (path:path) ~minpre ~minpost ~minlen =
         let io = try open_in path with Sys_error(msg) -> error msg 
         in
-            finally load' io close_in
+            finally (load' minpre minpost minlen) io close_in
     
     
 Hyphenation by splitting a word into substrings can finally happen when
