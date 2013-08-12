@@ -657,8 +657,7 @@ let words_in path   = finally words' (open_in path) close_in
 
 let main () =
     let argv        = Array.to_list Sys.argv in
-    let this        = Filename.chop_extension 
-                        @@ Filename.basename 
+    let this        = Filename.basename 
                         @@ List.hd argv in
     let args        = List.tl argv in    
     let language    = Hyphenate_us.t in
