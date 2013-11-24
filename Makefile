@@ -11,9 +11,11 @@ LP		= ./lipsum/lipsum
 LP 		= lipsum
 OCB 		= ocamlbuild
 
-SRC 		=  hyphenate.mli hyphenate.ml 
-SRC		+= hyphenate_reader.mli hyphenate_reader.mll
-SRC		+= demo.ml
+SRC =   hyphenate.mli 
+SRC +=	hyphenate.ml 
+SRC +=	hyphenate_reader.mli 
+SRC +=	hyphenate_reader.mll
+SRC +=	demo.ml
 
 LANG		=  hyphenate_us.mli hyphenate_us.ml
 
