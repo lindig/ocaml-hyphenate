@@ -140,8 +140,9 @@ word into disjoint substrings:
 
 <<hyphenate.mli>>=
 (** Module [Hyphenate]: split a word according to TeX hyphenation patterns.
-    This module is not Unicode aware
-    @author Christian Lindig <lindig@gmail.com>
+    This module is not Unicode aware.
+
+    @author Christian Lindig <lindig\@gmail.com>
 *)
 
 exception Error of string

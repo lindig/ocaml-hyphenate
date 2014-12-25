@@ -1,4 +1,4 @@
-#
+# vim: noet: 
 # Makefile
 #
 # Lipsum is available from https://github.com/lindig/lipsum. Try
@@ -9,7 +9,7 @@
 
 LP		= ./lipsum/lipsum
 LP 		= lipsum
-OCB 		= ocamlbuild
+OCB 	= ocamlbuild
 
 SRC =   hyphenate.mli 
 SRC +=	hyphenate.ml 
@@ -17,8 +17,7 @@ SRC +=	hyphenate_reader.mli
 SRC +=	hyphenate_reader.mll
 SRC +=	demo.ml
 
-LANG		=  hyphenate_us.mli hyphenate_us.ml
-
+LANG	= hyphenate_us.mli hyphenate_us.ml
 DOC		= README.md
 
 all: 		$(SRC) $(DOC)
@@ -33,6 +32,8 @@ clean:
 		$(OCB) -clean
 		rm -f $(SRC) $(DOC)
 		rm -f gmon.out
+		rm -f index.html index_*.html style.css type_*.html
+		rm -f Hyphenate.html
 		# rm -f lipsum
 
 test:		performance
