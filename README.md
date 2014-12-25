@@ -431,15 +431,15 @@ the `texword` argument has a suitable format.
     <<hyphenate.ml>>=
     let normalize (texword:string): string * int array =
         let n      = letters texword in
-        let word   = String.make n ' ' in
+        let word   = Bytes.make n ' ' in
         let breaks = Array.make (n+1) 0 in
         let scan i c =
             if is_letter c
-            then (  word.[i] <- c       ; i+1)
+            then (Bytes.set word i c    ; i+1)
             else (breaks.(i) <- int_of c; i  )
         in
             ( ignore (* int *) (foldstr scan 0 texword)
-            ; word, breaks
+            ; Bytes.to_string word, breaks
             )
     
 For debugging, we join a word and its break points into a string again
@@ -449,14 +449,14 @@ that can be easily printed. In a sense, `join` is a dual to `normalize`.
     let join (word:string) (breaks:int array): string =
         assert (Array.length breaks = String.length word + 1);
         let i2c i = Char.chr (i + Char.code '0') in
-        let str = String.make (Array.length breaks + String.length word) ' ' in
+        let str = Bytes.make (Array.length breaks + String.length word) ' ' in
         for i = 0 to String.length word - 1 do
-            ( str.[i*2]   <- i2c breaks.(i)
-            ; str.[i*2+1] <- word.[i]
+            ( Bytes.set str (i*2)   (i2c breaks.(i))
+            ; Bytes.set str (i*2+1) word.[i]
             )
         done;
-        str.[String.length word * 2] <- i2c breaks.(String.length word);
-        str
+        Bytes.set str (String.length word * 2) @@ i2c breaks.(String.length word);
+        Bytes.to_string str
     
     
 `add` adds a new pattern to dictionary `t` and maintains the `minpatlen`
