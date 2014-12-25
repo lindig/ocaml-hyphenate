@@ -69,9 +69,10 @@ optimization is the representation of hyphenation patterns. The
 implementation stores them in a hash table. I haven't looked into this but
 I believe a better representation would take advantage of the fact that
 lookup operations are correlated: lookup operations result from sliding a
-window over the word to be hyphenated. Hence, two lookup operations are
-looking for words that are quite similar. It should be possible to exploit
-this. The implementation of TeX would be the first place to look for ideas.
+window over the word to be hyphenated. Hence, two sequential lookup
+operations are looking for words that are quite similar. It should be
+possible to exploit this. The implementation of TeX would be the first
+place to look for ideas.
 
 
 ## Ideas for Future Work
@@ -94,7 +95,7 @@ Appendix H.
 
 ## Copyright
 
-Copyright (c) 2012, Christian Lindig <lindig@gmail.com>
+Copyright (c) 2012, 2014 Christian Lindig <lindig@gmail.com>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or
@@ -138,27 +139,42 @@ A language value is a mutable abstraction.  `hyphenate` splits a given
 word into disjoint substrings:
 
     <<hyphenate.mli>>=
+    (** Module [Hyphenate]: split according to TeX hyphenation patterns. This
+        module is not Unicode aware *)
+    
     exception Error of string
+    (** signaling errors *)
     
-    type t                          (* mutable *)   
-    type path = string              (* file path *)
+    type t     
+    (** mutable hyphenation pattern dictionary for a given language *)
+    
+    type path = string
+    (** file path *)
     
     
-The `make` constructor takes three integer argument:
-
-* `minpre` - the minimum number of characters before the first hyphen
-* `minpost` - the minimum number of characters after the last hyphen
-* `minlen` - the minimum length of a word that gets hyphenated
-
-
     <<hyphenate.mli>>=
-    val make: minpre:int -> minpost:int -> minlen:int -> t            
-    val add:  t -> string -> unit   (* add a pattern to a language *)
+    val make: minpre:int  ->  minpost:int ->  minlen:int  ->  t               
+    (** Create empty pattern dictionary.
+        @param minpre min number of characters before the first hyphen
+        @param minpost min characters after the last hyphen 
+        @param minlen min length of word that gets hyphenated *)
+        
+    val add:  t -> string -> unit   
+    (** [add t pat] add pattern [pat] to dictionary [t] *)
     
-    val load: path -> minpre:int -> minpost:int -> minlen:int -> t (* Error *)
-    val dump: t -> unit             (* for debugging *)
+    val load: path -> minpre:int -> minpost:int -> minlen:int -> t 
+    (** [load path minpre minpost minlen] loads patterns from [path]
+        to create a pattern dictionary from it.
+        @param minpre min number of characters before the first hyphen
+        @param minpost min characters after the last hyphen 
+        @param minlen min length of word that gets hyphenated 
+        @raise Error when [path] can't be loaded *)
+    
+    val dump: t -> unit             
+    (** [dump t] dumps pattern dictionary to stdout for debugging *)
     
     val hyphenate: t -> string -> string list
+    (** [hyphenate t word] hyphenates [word] according to patterns [t] *)
     
 
 ## Hyphenation Patterns
@@ -201,13 +217,19 @@ To read a pattern file we use a lexical scanner. The scanner implements a
 function `read` that returns the next pattern. 
 
     <<hyphenate_reader.mli>>=
-    exception Error of string       (* reports syntax errors in patterns*)
-    type entry =
-        | EOF                       (* end of file *)
-        | Pattern of string         (* pattern *)
+    exception Error of string       (** reports syntax errors in patterns*)
     
-    val read:   Lexing.lexbuf -> entry (* may raise Error *)
-    val words:  Lexing.lexbuf -> string list (* for testing *)
+    (** hyphenation pattern *)
+    type entry =
+        | EOF                       (** end of file *)
+        | Pattern of string         (** pattern *)
+    
+    val read:   Lexing.lexbuf -> entry 
+    (** read next pattern
+        @raise Error for syntax errors *)
+    
+    val words:  Lexing.lexbuf -> string list 
+    (** read all patterns into a list for testing *)
     
 
 ## Reading Patterns -- The Implementation
@@ -404,7 +426,7 @@ the `texword` argument has a suitable format.
     let normalize (texword:string): string * int array =
         let n      = letters texword in
         let word   = String.make n ' ' in
-        let breaks = Array.create (n+1) 0 in
+        let breaks = Array.make (n+1) 0 in
         let scan i c =
             if is_letter c
             then (  word.[i] <- c       ; i+1)
@@ -558,7 +580,7 @@ Break point _i_ belongs to the gap between characters _i-1_ and _i_:
     
     let next_hp breaks first last i =
         let rec loop i =
-            if i > last or i >= Array.length breaks then None
+            if i > last || i >= Array.length breaks then None
             else if i < first                       then loop (i+1)
             else if is_odd breaks.(i)               then Some i
             else loop (i+1)
@@ -666,7 +688,7 @@ but it can be convenient to have access to it.)
         ; "turned to lower case. "^this^" uses built-in patterns for"
         ; "US English."  
         ; ""
-        ; "(c) 2012 Christian Lindig <lindig@gmail.com>"
+        ; "(c) 2012, 2014 Christian Lindig <lindig@gmail.com>"
         ; "https://github.com/lindig/ocaml-hyphenate"
         ]
     

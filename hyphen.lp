@@ -24,7 +24,7 @@ the `Makefile`. It supports downloading and building Lipsum.
 
     $ make
 
-## Demo 
+## Demo
 
 Running Make builds a small demo application that can be used to hyphenate
 words from a text file or the command line.
@@ -69,9 +69,10 @@ optimization is the representation of hyphenation patterns. The
 implementation stores them in a hash table. I haven't looked into this but
 I believe a better representation would take advantage of the fact that
 lookup operations are correlated: lookup operations result from sliding a
-window over the word to be hyphenated. Hence, two lookup operations are
-looking for words that are quite similar. It should be possible to exploit
-this. The implementation of TeX would be the first place to look for ideas.
+window over the word to be hyphenated. Hence, two sequential lookup
+operations are looking for words that are quite similar. It should be
+possible to exploit this. The implementation of TeX would be the first
+place to look for ideas.
 
 
 ## Ideas for Future Work
@@ -84,7 +85,7 @@ this. The implementation of TeX would be the first place to look for ideas.
   space requirements. But maybe this is better left for client code.
 
 * Implement Unicode handling (and hence give up simple strings for the
-  representation of words.)  
+  representation of words.)
 
 
 ## References
@@ -94,7 +95,7 @@ Appendix H.
 
 ## Copyright
 
-Copyright (c) 2012, Christian Lindig <lindig@gmail.com>
+Copyright (c) 2012, 2014 Christian Lindig <lindig@gmail.com>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or
@@ -125,12 +126,12 @@ POSSIBILITY OF SUCH DAMAGE.
 ## Encodings
 
 This code works only with encodings where a character corresponds to a
-byte. 
+byte.
 
 ## Hyphenate -- The Interface
 
 The core algorithm is implemented in module Hyphenate with an accompanying
-interface. 
+interface.
 
 Hyphenation is language specific and requires to load hyphenation patterns
 from a file using `load` before words can be hyphenated using `hyphenate`.
@@ -138,26 +139,46 @@ A language value is a mutable abstraction.  `hyphenate` splits a given
 word into disjoint substrings:
 
 <<hyphenate.mli>>=
+(** Module [Hyphenate]: split a word according to TeX hyphenation patterns.
+    This module is not Unicode aware
+    @author Christian Lindig <lindig@gmail.com>
+*)
+
 exception Error of string
+(** signaling errors *)
 
-type t                          (* mutable *)   
-type path = string              (* file path *)
+type t
+(** mutable hyphenation pattern dictionary for a given language *)
 
-@ The `make` constructor takes three integer argument:
-
-* `minpre` - the minimum number of characters before the first hyphen
-* `minpost` - the minimum number of characters after the last hyphen
-* `minlen` - the minimum length of a word that gets hyphenated
-
+type path = string
+(** file path *)
 
 <<hyphenate.mli>>=
-val make: minpre:int -> minpost:int -> minlen:int -> t            
-val add:  t -> string -> unit   (* add a pattern to a language *)
+val make: minpre:int  ->  minpost:int ->  minlen:int  ->  t
+(** Create empty pattern dictionary.
+    @param minpre min number of characters before the first hyphen
+    @param minpost min characters after the last hyphen
+    @param minlen min length of word that gets hyphenated *)
 
-val load: path -> minpre:int -> minpost:int -> minlen:int -> t (* Error *)
-val dump: t -> unit             (* for debugging *)
+val add:  t -> string -> unit
+(** [add t pat] add pattern [pat] to dictionary [t]; mutates it *)
+
+val load: path -> minpre:int -> minpost:int -> minlen:int -> t
+(** [load path minpre minpost minlen] loads patterns from [path]
+    to create a pattern dictionary from it.
+    @param path named file with TeX patterns
+    @param minpre min number of characters before the first hyphen
+    @param minpost min characters after the last hyphen
+    @param minlen min length of word that gets hyphenated
+    @return a new pattern dictionary
+    @raise Error when [path] can't be loaded
+    *)
+
+val dump: t -> unit
+(** [dump t] dumps pattern dictionary to stdout for debugging *)
 
 val hyphenate: t -> string -> string list
+(** [hyphenate t word] hyphenates [word] according to patterns [t] *)
 @
 
 ## Hyphenation Patterns
@@ -197,16 +218,22 @@ More language-specific patterns can be found at
 ## Reading Patterns -- The Interface
 
 To read a pattern file we use a lexical scanner. The scanner implements a
-function `read` that returns the next pattern. 
+function `read` that returns the next pattern.
 
 <<hyphenate_reader.mli>>=
-exception Error of string       (* reports syntax errors in patterns*)
-type entry =
-    | EOF                       (* end of file *)
-    | Pattern of string         (* pattern *)
+exception Error of string       (** reports syntax errors in patterns*)
 
-val read:   Lexing.lexbuf -> entry (* may raise Error *)
-val words:  Lexing.lexbuf -> string list (* for testing *)
+(** hyphenation pattern *)
+type entry =
+    | EOF                       (** end of file *)
+    | Pattern of string         (** pattern *)
+
+val read:   Lexing.lexbuf -> entry
+(** read next pattern
+    @raise Error for syntax errors *)
+
+val words:  Lexing.lexbuf -> string list
+(** read all patterns into a list for testing *)
 @
 
 ## Reading Patterns -- The Implementation
@@ -246,7 +273,7 @@ let pat         = dot? digit? (lowercase digit?)+ dot?
 let comment     = '%' [^'\n']* '\n'
 let ws          = [' ' '\t' '\r' '\n']
 
-@ Rule `token`  recognizes a pattern as it is in a file. 
+@ Rule `token`  recognizes a pattern as it is in a file.
 
 <<rules>>=
 rule token = parse
@@ -267,7 +294,7 @@ a text file into words but is not used by module Hyphenate.
 and words ws = parse
      eof        { List.rev ws }
   |  alpha+     { words ((String.lowercase @@ get lexbuf) :: ws) lexbuf }
-  |  _          { words ws lexbuf }  (* skip *)   
+  |  _          { words ws lexbuf }  (* skip *)
 
 
 @ Function `read` reads the next pattern from the file and splits into
@@ -289,7 +316,7 @@ can avoid searching for any pattern that falls outside these bounds.
 
 <<hyphenate.ml>>=
 type path       = string      (* a file path *)
-type t   = 
+type t   =
     { patterns:             (string, int array) Hashtbl.t (* key, value *)
     ; mutable maxpatlen:    int (* longest key in patterns *)
     ; mutable minpatlen:    int (* shortest key in patterns *)
@@ -301,9 +328,9 @@ type t   =
 let make ~minpre ~minpost ~minlen =                 (* create empty value *)
     { patterns          =   Hashtbl.create 4999 (* a prime number *)
     ; maxpatlen         =   0
-    ; minpatlen         =   max_int                
+    ; minpatlen         =   max_int
     ; minpre            =   minpre (* at least 1 char before 1st hyphen *)
-    ; minpost           =   minpost 
+    ; minpost           =   minpost
     ; minlen            =   minlen
     }
 
@@ -321,7 +348,7 @@ let debug fmt   = Printf.kprintf (fun msg -> prerr_string msg) fmt
 
 <<hyphenate.ml>>=
 let (@.) f g x  = f (g x)   (* function composition *)
-let (@@) f x    = f x 
+let (@@) f x    = f x
 
 @ `finally f x cleanup` function provides resource cleanup in the presence
 of exceptions: `f x` is computed as a result and `cleanup x` is guaranteed
@@ -330,13 +357,13 @@ but it can be convenient to have access to it.)
 
 <<hyphenate.ml>>=
 type 'a result = Success of 'a | Failed of exn
-let finally f x cleanup = 
+let finally f x cleanup =
     let result =
         try Success (f x) with exn -> Failed exn
     in
-        cleanup x; 
+        cleanup x;
         match result with
-        | Success y  -> y 
+        | Success y  -> y
         | Failed exn -> raise exn
 
 @ Below are functions that split a pattern as it is read from a file
@@ -350,9 +377,9 @@ let is_digit = function
     | '0'..'9' -> true
     | _        -> false
 
-let is_letter = not @. is_digit 
+let is_letter = not @. is_digit
 
-let int_of (c:char): int = 
+let int_of (c:char): int =
     assert ('0' <= c && c <= '9');
     Char.code c - Char.code '0'
 
@@ -364,9 +391,9 @@ by `f` in the previous iteration.
 <<hyphenate.ml>>=
 let foldstr f zero str =
     let limit = String.length str in
-    let rec loop i acc = 
-        if   i = limit 
-        then acc 
+    let rec loop i acc =
+        if   i = limit
+        then acc
         else loop (i+1) (f acc str.[i])
     in
         loop 0 zero
@@ -374,7 +401,7 @@ let foldstr f zero str =
 @ `Letters` counts the number of letters in a string.
 
 <<hyphenate.ml>>=
-let letters (word:string): int = 
+let letters (word:string): int =
     foldstr (fun n c -> if is_letter c then n+1 else n) 0 word
 
 @ Function `normalize` takes a pattern as it is read from a pattern file and
@@ -390,7 +417,7 @@ the `texword` argument has a suitable format.
 let normalize (texword:string): string * int array =
     let n      = letters texword in
     let word   = String.make n ' ' in
-    let breaks = Array.create (n+1) 0 in
+    let breaks = Array.make (n+1) 0 in
     let scan i c =
         if is_letter c
         then (  word.[i] <- c       ; i+1)
@@ -411,7 +438,7 @@ let join (word:string) (breaks:int array): string =
         ( str.[i*2]   <- i2c breaks.(i)
         ; str.[i*2+1] <- word.[i]
         )
-    done; 
+    done;
     str.[String.length word * 2] <- i2c breaks.(String.length word);
     str
 
@@ -438,7 +465,7 @@ let slide (n:int) (str:string) (f:int -> string -> unit): unit =
     assert (n <= String.length str);
     for i = 0 to String.length str - n do
         f i (String.sub str i n)
-    done    
+    done
 
 @ The basic idea to compute hyphenation points using patterns is as follows:
 given a string, we slide windows of increasing size 1, 2, 3, ... over this
@@ -446,7 +473,7 @@ string. Every window content is taken as a key to look up an associated
 array of integers that assigns numbers to every point before, after, and
 within the string, that is, all possible hyphenation points. For a window
 of size _m_ the integer array has size _m+1_, which is the number of
-hyphenation points for a string of size _m_. 
+hyphenation points for a string of size _m_.
 
 When we plan to hyphenate a word of size _n_, the various sliding windows
 retrieve associated hyphenation points which are combined into one array of
@@ -461,14 +488,14 @@ Combining a small integer array with a large array is implemented by
 function `combine`.  It takes a `small` and a `large` array as arguments
 and the index `i` of the element in the large array that is aligned with
 the first element (0) of the smaller array. The result is an updated large
-array. 
+array.
 
 <<hyphenate.ml>>=
 let combine ~(first:int) ~(small:int array) ~(large:int array): unit =
     assert (Array.length small + first <= Array.length large);
     for i = first to first + Array.length small - 1 do
         large.(i) <- max small.(i-first) large.(i)
-    done    
+    done
 
 @ Function `load` reads a pattern file for a language and returns a
 `language` value.  We make sure that the file gets closed even if some
@@ -482,15 +509,15 @@ let load' minpre minpost minlen io: t =
     let rec loop lb =
         match Hyphenate_reader.read lb with
             | Hyphenate_reader.EOF -> t
-            | Hyphenate_reader.Pattern(pattern) -> 
+            | Hyphenate_reader.Pattern(pattern) ->
                 ( add t pattern
-                ; loop lb 
+                ; loop lb
                 )
     in
         loop lexbuf
 
 let load (path:path) ~minpre ~minpost ~minlen =
-    let io = try open_in path with Sys_error(msg) -> error msg 
+    let io = try open_in path with Sys_error(msg) -> error msg
     in
         finally (load' minpre minpost minlen) io close_in
 
@@ -516,15 +543,15 @@ hyphenation or not.
 
 Function `split` implements splitting a word into parts at hyphenation
 points. It takes all clues from the array `breaks` that assigns a value to
-each potential hyphenation point as explained above. 
+each potential hyphenation point as explained above.
 
-Break point _i_ belongs to the gap between characters _i-1_ and _i_: 
+Break point _i_ belongs to the gap between characters _i-1_ and _i_:
 
     word    . h y p h e n a t i o n .                word
     word    0 1 2 3 4 5 6 7 8 9 1 2 3     index  for word
     breaks 0 1 2 3 4 5 6 7 8 9 1 2 3 4    index  for breaks
-    breaks 0 0 0 3 0 0 2 5 4 2 0 2 0 0    value  for breaks 
-            . h y-p h e n-a t i o n .                 
+    breaks 0 0 0 3 0 0 2 5 4 2 0 2 0 0    value  for breaks
+            . h y-p h e n-a t i o n .
 
     minpre         = 1
     minpost         = 2
@@ -538,7 +565,7 @@ let is_odd (n:int): bool    = n mod 2 = 1
 
 let next_hp breaks first last i =
     let rec loop i =
-        if i > last or i >= Array.length breaks then None
+        if i > last || i >= Array.length breaks then None
         else if i < first                       then loop (i+1)
         else if is_odd breaks.(i)               then Some i
         else loop (i+1)
@@ -546,7 +573,7 @@ let next_hp breaks first last i =
         loop i
 @
 
-<<hyphenate.ml>>= 
+<<hyphenate.ml>>=
 let split (t:t) (word:string) (breaks:int array): string list =
     (* debug "split %s %s\n" word (join word breaks); *)
     assert (Array.length breaks = String.length word + 1);
@@ -557,11 +584,11 @@ let split (t:t) (word:string) (breaks:int array): string list =
     let last_bp    = word_len - t.minpost - 1 in (* breaks *)
     (* debug "first:%d last:%d first_bp:%d last_bp:%d\n"
         first_char last_char first_bp last_bp; *)
-    let rec loop i (* word *) acc = 
+    let rec loop i (* word *) acc =
         match next_hp breaks first_bp last_bp (i+1) with
-        | None   -> take word i last_char :: acc 
+        | None   -> take word i last_char :: acc
         | Some j -> loop j (take word i (j-1) :: acc)
-    in 
+    in
         List.rev @@ loop first_char []
 
 @ To hyphenate a word, we put a dot `.` at the beginning and end and use a
@@ -580,7 +607,7 @@ let hyphenate t (word:string): string list =
     let breaks = Array.make (len + 1) 0 in
     let lookup pos substr:unit =
         ( () (* debug "%s%s\n" (String.make pos ' ') substr *)
-        ; combine pos (Hashtbl.find t.patterns substr) breaks 
+        ; combine pos (Hashtbl.find t.patterns substr) breaks
         ; () (* debug "%s\n" (join word breaks) *)
         ) in
     let lookup' pos substr = try lookup pos substr with Not_found -> ()
@@ -595,7 +622,7 @@ let hyphenate t (word:string): string list =
 let dump t =
     let print key value =
         Printf.printf "%s %s\n" key (join key value)
-    in    
+    in
         Hashtbl.iter print t.patterns
 @
 
@@ -607,7 +634,7 @@ We provide a small demo client.
 exception Error of string
 
 let error msg = raise (Error msg)
-let (@@) f x  = f x 
+let (@@) f x  = f x
 
 @ `finally f x cleanup` function provides resource cleanup in the presence
 of exceptions: `f x` is computed as a result and `cleanup x` is guaranteed
@@ -616,13 +643,13 @@ but it can be convenient to have access to it.)
 
 <<demo.ml>>=
 type 'a result = Success of 'a | Failed of exn
-let finally f x cleanup = 
+let finally f x cleanup =
     let result =
         try Success (f x) with exn -> Failed exn
     in
-        cleanup x; 
+        cleanup x;
         match result with
-        | Success y  -> y 
+        | Success y  -> y
         | Failed exn -> raise exn
 
 
@@ -634,40 +661,40 @@ let usage this =
     ; this ^ " -f file.txt          hypenate words in file.txt"
     ; this ^ " word ..              hyphenate arguments"
     ; this ^ " -h                   emit help"
-    ; this ^ " -d                   emit hyphenation patterns" 
+    ; this ^ " -d                   emit hyphenation patterns"
     ; ""
     ; this^" reads words from a file or the command line and"
     ; "emits them hyphenated to stdout. Before hyphenation, words are"
     ; "turned to lower case. "^this^" uses built-in patterns for"
-    ; "US English."  
+    ; "US English."
     ; ""
-    ; "(c) 2012 Christian Lindig <lindig@gmail.com>"
+    ; "(c) 2012, 2014 Christian Lindig <lindig@gmail.com>"
     ; "https://github.com/lindig/ocaml-hyphenate"
     ]
 
-@ `process` hyphenates a word, joins the parts together using a hyphen and 
+@ `process` hyphenates a word, joins the parts together using a hyphen and
 emits it.
 
 <<demo.ml>>=
-let process lang word = 
+let process lang word =
     print_endline @@ String.concat "-" @@ Hyphenate.hyphenate lang word
 
 let words' io       = Hyphenate_reader.words @@ Lexing.from_channel io
-let words_in path   = finally words' (open_in path) close_in    
+let words_in path   = finally words' (open_in path) close_in
 
 let main () =
     let argv        = Array.to_list Sys.argv in
-    let this        = Filename.basename 
+    let this        = Filename.basename
                         @@ List.hd argv in
-    let args        = List.tl argv in    
+    let args        = List.tl argv in
     let language    = Hyphenate_us.t in
         match args with
         | ["-f"; path]  -> List.iter (process language) (words_in path)
         | "-h" :: _     -> usage this
         | ["-d"]        -> Hyphenate.dump Hyphenate_us.t
-        | word :: _     -> List.iter (process language) 
-                            (List.map String.lowercase args)         
+        | word :: _     -> List.iter (process language)
+                            (List.map String.lowercase args)
         | _             -> usage this
 
 let _ = main (); exit 0
-@        
+@
